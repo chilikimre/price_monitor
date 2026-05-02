@@ -7,7 +7,11 @@ from config import TARGET_URLS
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('price_monitor.log'),
+        logging.StreamHandler()
+    ]
 )
 
 def check_price_changes(new_results, filename='prices.csv'):
@@ -67,13 +71,12 @@ def save_to_csv(results, filename='prices.csv'):
             writer.writeheader()
             for res in results:
                 if res:
-                    timestamp_str = datetime.fromtimestamp(res['timestamp']).isoformat()
                     writer.writerow({
                         'URL': res['url'],
                         'Title': res['data']['title'],
                         'Price': res['data']['price'],
                         'In Stock': res['data']['in_stock'],
-                        'Timestamp': timestamp_str
+                        'Timestamp': datetime.now().isoformat()
                     })
         
         logging.info(f"Результаты сохранены в {filename}")
@@ -82,28 +85,14 @@ def save_to_csv(results, filename='prices.csv'):
 
 async def main():
     monitor = PriceMonitorPipeline()
-    await monitor.init()
-    
     try:
+        await monitor.init()
         results = await monitor.run(TARGET_URLS)
         
-        print("\n--- Результаты ---")
-        for res in results:
-            if res:
-                print(f"URL: {res['url']}")
-                print(f"Товар: {res['data']['title']}")
-                print(f"Цена: {res['data']['price']}")
-                print(f"В наличии: {res['data']['in_stock']}")
-                print("-" * 20)
-        
-        # Проверяем изменения цены
-        print("\n--- Анализ изменений ---")
         check_price_changes(results)
-        
-        # Сохраняем результаты в CSV
         save_to_csv(results)
     finally:
         await monitor.close()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
